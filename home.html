@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indian Dynasties Map & Memory Quizzes</title>
+  <style>
+    :root {
+      --color-bg: #FFFFFF;
+      --color-panel: #FFFFFF;
+      --color-ocean: #FFFFFF;
+      --color-land: #FFFFFF;
+      --color-text-main: #000000;
+      --color-text-sub: #374151;
+      --color-border: #D1D5DB;
+      --color-primary: #1D4ED8;
+      --color-success: #15803D;
+      --color-danger: #B91C1C;
+    }
+    @media(prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #111827;
+        --color-panel: #FFFFFF;
+        --color-ocean: #FFFFFF;
+        --color-land: #FFFFFF;
+        --color-text-main: #000000;
+        --color-text-sub: #374151;
+        --color-border: #D1D5DB;
+      }
+      body { background-color: #111827; }
+    }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: var(--color-bg); color: var(--color-text-main); }
+    * { box-sizing: border-box; }
+    
+    /* Main Toggles */
+    .mode-toggle { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+    .mode-btn { padding: 8px 16px; font-size: 14px; font-weight: bold; border: 2px solid var(--color-primary); border-radius: 8px; background: #FFFFFF; color: var(--color-primary); cursor: pointer; transition: 0.2s; }
+    .mode-btn.active { background: var(--color-primary); color: #fff; }
+    
+    /* Sub-menus for Options */
+    .sub-toggle { display: none; justify-content: center; gap: 8px; margin-bottom: 15px; }
+    .sub-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-border); border-radius: 6px; background: #FFFFFF; color: var(--color-text-sub); cursor: pointer; transition: 0.2s; }
+    .sub-btn.active { background: var(--color-text-sub); color: #fff; border-color: var(--color-text-sub); }
+
+    /* Explore UI */
+    .explore-ui { display: block; }
+    .pb { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 5px 0 10px; }
+    .pbt { font-size: 11px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: #FFFFFF; color: var(--color-text-sub); cursor: pointer; transition: 0.2s; font-weight: 500;}
+    .pbt.act { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .pbt:hover:not(.act) { background: var(--color-border); }
+    .pnav { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 5px 0 10px; }
+    .pnav button { font-size: 13px; padding: 5px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: #FFFFFF; color: var(--color-text-main); cursor: pointer; }
+    .pnav button:hover { background: var(--color-border); }
+    
+    /* Quiz UI */
+    .quiz-ui { display: none; text-align: center; margin-bottom: 15px; }
+    .quiz-hud { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    .quiz-prompt { font-size: 15px; color: var(--color-text-sub); background: #FFFFFF; padding: 15px; border-radius: 8px; border: 1px solid var(--color-border); max-width: 600px; margin: 0 auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
+    .quiz-score { font-size: 14px; color: var(--color-primary); font-weight: bold; margin-top: 10px; }
+    
+    .mc-grid { display: none; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 600px; margin: 15px auto 0; }
+    .mc-btn { padding: 12px; font-size: 14px; font-weight: bold; background: #FFFFFF; border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-main); cursor: pointer; transition: 0.2s; }
+    .mc-btn:hover:not(:disabled) { border-color: var(--color-primary); background: #F3F4F6; }
+    .mc-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+    .mc-btn.correct { background: var(--color-success); color: #fff; border-color: var(--color-success); }
+    .mc-btn.wrong { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
+
+    /* Map container */
+    .map-container { max-width: 700px; margin: 0 auto; background: var(--color-panel); border-radius: 12px; border: 1px solid var(--color-border); padding: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    
+    .region-group { transition: 0.2s; }
+    .explore-mode .region-group { cursor: pointer; }
+    .explore-mode .region-group:hover path { opacity: 0.6 !important; stroke: #000000; stroke-width: 2.5px; z-index: 10;}
+    
+    .loc-quiz-mode .region-group { cursor: pointer; }
+    .loc-quiz-mode .region-group:hover path { fill: var(--color-border) !important; opacity: 0.8 !important; }
+    
+    .time-quiz-mode .region-group { cursor: default; }
+
+    .dynasty-label { pointer-events: none; text-shadow: 0px 0px 3px #FFFFFF, 0px 0px 5px #FFFFFF; font-weight: 800; font-size: 13px; fill: #000000; }
+    .dynasty-dates { font-size: 10px; font-weight: 600; fill: #374151; }
+    
+    .inf { padding: 15px; background: var(--color-panel); border-radius: 12px; border: 1px solid var(--color-border); max-width: 700px; margin: 10px auto; text-align: left; min-height: 50px; font-weight: 500; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;}
+    .inf-title { width: 100%; text-align: center; margin-bottom: 5px; font-weight: bold; color: #374151; text-transform: uppercase; letter-spacing: 1px; font-size: 12px; border-bottom: 1px solid var(--color-border); padding-bottom: 5px; }
+  </style>
+</head>
+<body>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btn-explore" onclick="setMode('explore')">🗺️ Explore Mode</button>
+    <button class="mode-btn" id="btn-quiz" onclick="setMode('quiz')">🎮 Quiz Mode</button>
+  </div>
+  
+  <div class="sub-toggle" id="quiz-type-toggle">
+    <button class="sub-btn active" id="btn-loc-quiz" onclick="setQuizType('location')">📍 Location Quiz (Where?)</button>
+    <button class="sub-btn" id="btn-time-quiz" onclick="setQuizType('timeline')">⏳ Timeline Quiz (When?)</button>
+  </div>
+
+  <div class="sub-toggle" id="explore-interval-toggle" style="display:flex;">
+    <button class="sub-btn active" id="btn-100yr" onclick="setIntervalMode(100)">100-Year Scale</button>
+    <button class="sub-btn" id="btn-200yr" onclick="setIntervalMode(200)">200-Year Scale</button>
+  </div>
+
+  <div class="explore-ui" id="explore-ui">
+    <div class="pb" id="pb"></div>
+    <div class="pnav">
+      <button onclick="step(-1)">← Prev</button>
+      <span id="pt" style="font-size:16px;font-weight:bold;min-width:160px;text-align:center"></span>
+      <button onclick="step(1)">Next →</button>
+    </div>
+    <div style="text-align:center;font-size:12px;color:#374151;margin-bottom:10px" id="pc"></div>
+  </div>
+
+  <div class="quiz-ui" id="quiz-ui">
+    <div class="quiz-hud" id="quiz-hud">Question 1 of 10</div>
+    <div class="quiz-prompt" id="quiz-prompt">Loading question...</div>
+    <div class="mc-grid" id="mc-grid"></div>
+    <div class="quiz-score" id="quiz-score">Score: 0</div>
+    <button onclick="startQuiz()" style="margin-top:10px; padding: 5px 10px; border-radius: 5px; cursor: pointer; display:none;" id="btn-restart">Restart Quiz</button>
+  </div>
+
+  <div class="map-container" id="map-container">
+    <svg viewBox="0 0 600 650" style="width:100%;height:auto;border-radius:8px;" id="mapsvg" class="explore-mode">
+      <defs id="static-defs">
+        <clipPath id="india-clip">
+          <path d="M 160,280 C 140,240 100,260 100,250 C 100,240 130,220 120,210 C 110,200 90,200 90,190 C 90,180 50,170 60,160 C 70,150 70,130 80,120 C 90,110 110,90 120,80 C 130,70 170,50 180,40 C 190,30 210,20 220,20 C 230,20 270,50 280,60 C 290,70 310,90 320,100 C 330,110 390,120 400,120 C 410,120 450,110 460,120 C 470,130 510,150 500,160 C 490,170 470,190 460,200 C 450,210 430,200 420,200 C 410,200 390,250 380,260 C 370,270 350,350 340,360 C 330,370 310,470 300,480 C 290,490 290,530 280,540 C 270,550 250,490 240,480 C 230,470 210,390 200,380 C 190,370 170,290 160,280 Z" />
+          <path d="M 310,550 C 330,550 340,580 330,610 C 320,620 290,610 300,580 C 300,560 300,550 310,550 Z" />
+        </clipPath>
+      </defs>
+      
+      <defs id="dynamic-patterns"></defs>
+
+      <rect width="100%" height="100%" fill="#FFFFFF" />
+
+      <g stroke="#D1D5DB" stroke-width="1" fill="#FFFFFF">
+        <path d="M 160,280 C 140,240 100,260 100,250 C 100,240 130,220 120,210 C 110,200 90,200 90,190 C 90,180 50,170 60,160 C 70,150 70,130 80,120 C 90,110 110,90 120,80 C 130,70 170,50 180,40 C 190,30 210,20 220,20 C 230,20 270,50 280,60 C 290,70 310,90 320,100 C 330,110 390,120 400,120 C 410,120 450,110 460,120 C 470,130 510,150 500,160 C 490,170 470,190 460,200 C 450,210 430,200 420,200 C 410,200 390,250 380,260 C 370,270 350,350 340,360 C 330,370 310,470 300,480 C 290,490 290,530 280,540 C 270,550 250,490 240,480 C 230,470 210,390 200,380 C 190,370 170,290 160,280 Z" />
+        <path d="M 310,550 C 330,550 340,580 330,610 C 320,620 290,610 300,580 C 300,560 300,550 310,550 Z" />
+      </g>
+
+      <g clip-path="url(#india-clip)" id="regions-layer"></g>
+      <g id="labels-layer"></g>
+    </svg>
+  </div>
+  
+  <div class="inf" id="inf"><span style="color:#374151">Select a region to learn more, or switch to Quiz Mode!</span></div>
+
+  <script>
+    // Two different arrays for timeline scales
+    const P100 = [
+      {l:"300 – 200 BCE",s:-300,e:-200}, {l:"200 – 100 BCE",s:-200,e:-100},
+      {l:"100 BCE – 1 CE",s:-100,e:1}, {l:"1 – 100 CE",s:1,e:100},
+      {l:"100 – 200 CE",s:100,e:200}, {l:"200 – 300 CE",s:200,e:300},
+      {l:"300 – 400 CE",s:300,e:400}, {l:"400 – 500 CE",s:400,e:500},
+      {l:"500 – 600 CE",s:500,e:600}, {l:"600 – 700 CE",s:600,e:700},
+      {l:"700 – 800 CE",s:700,e:800}, {l:"800 – 900 CE",s:800,e:900},
+      {l:"900 – 1000 CE",s:900,e:1000}, {l:"1000 – 1100 CE",s:1000,e:1100},
+      {l:"1100 – 1200 CE",s:1100,e:1200}, {l:"1200 – 1300 CE",s:1200,e:1300},
+      {l:"1300 – 1400 CE",s:1300,e:1400}, {l:"1400 – 1500 CE",s:1400,e:1500},
+      {l:"1500 – 1600 CE",s:1500,e:1600}, {l:"1600 – 1700 CE",s:1600,e:1700}
+    ];
+
+    const P200 = [
+      {l:"300 – 100 BCE",s:-300,e:-100}, {l:"100 BCE – 100 CE",s:-100,e:100},
+      {l:"100 – 300 CE",s:100,e:300}, {l:"300 – 500 CE",s:300,e:500},
+      {l:"500 – 700 CE",s:500,e:700}, {l:"700 – 900 CE",s:700,e:900},
+      {l:"900 – 1100 CE",s:900,e:1100}, {l:"1100 – 1300 CE",s:1100,e:1300},
+      {l:"1300 – 1500 CE",s:1300,e:1500}, {l:"1500 – 1700 CE",s:1500,e:1700}
+    ];
+
+    const RegPaths = {
+      kabul: "M 0,0 L 240,0 L 240,100 L 0,100 Z", sindh: "M 0,100 L 240,100 L 240,160 L 0,160 Z",
+      north: "M 240,0 L 600,0 L 600,200 L 380,200 L 240,160 Z", bengal: "M 380,200 L 600,200 L 600,280 L 340,280 Z",
+      odisha: "M 340,280 L 600,280 L 600,450 L 320,380 Z", rajputana: "M 0,160 L 240,160 L 230,220 L 0,220 Z",
+      gujarat: "M 0,220 L 230,220 L 220,260 L 0,260 Z", central: "M 240,160 L 380,200 L 340,280 L 220,260 L 230,220 Z",
+      deccan: "M 0,260 L 220,260 L 340,280 L 320,380 L 0,380 Z", karnataka: "M 0,380 L 260,380 L 260,700 L 0,700 Z",
+      tamil: "M 260,380 L 320,380 L 600,450 L 600,700 L 260,700 Z", lanka: "M 260,500 L 400,500 L 400,700 L 260,700 Z"
+    };
+
+    const LabelsConfig = {
+      kabul: {x: 120, y: 70}, sindh: {x: 100, y: 140}, north: {x: 310, y: 100},
+      bengal: {x: 450, y: 220}, odisha: {x: 410, y: 320}, rajputana: {x: 120, y: 190},
+      gujarat: {x: 110, y: 250}, central: {x: 290, y: 220}, deccan: {x: 180, y: 320},
+      karnataka: {x: 200, y: 440}, tamil: {x: 320, y: 450}, lanka: {x: 315, y: 580}
+    };
+
+    const Palette = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#fb7185', '#34d399', '#fbbf24', '#a3e635'];
+
+    const D = [
+      ['Maurya Empire', -322, -185, ['north','kabul','sindh','bengal','odisha','rajputana','gujarat','central','deccan','karnataka']],
+      ['Shunga', -185, -73, ['north','central']],
+      ['Kanva', -73, -28, ['north']],
+      ['Satavahana', -230, 220, ['deccan','central','karnataka']],
+      ['Kalinga', -280, 100, ['odisha']],
+      ['Chera (Sangam)', -300, 300, ['karnataka']],
+      ['Chola (Sangam)', -300, 300, ['tamil']],
+      ['Pandya', -300, 1345, ['tamil']],
+      ['Indo-Greek', -200, -10, ['kabul','sindh']],
+      ['Indo-Parthian', -20, 45, ['kabul']],
+      ['Indo-Scythian (Saka)', -150, 400, ['sindh','rajputana']],
+      ['Western Satraps', -100, 415, ['gujarat','rajputana']],
+      ['Kushan', 30, 375, ['kabul','sindh','north']],
+      ['Huns / Alchon', 450, 528, ['kabul','sindh','rajputana']],
+      ['Arab Sind', 711, 1026, ['sindh']],
+      ['Ghaznavid', 977, 1186, ['kabul','sindh','rajputana']],
+      ['Gupta Empire', 320, 550, ['north','bengal','odisha','rajputana','gujarat','central']],
+      ['Vakataka', 250, 500, ['central','deccan']],
+      ['Pallava', 275, 897, ['tamil','karnataka']],
+      ['Kadamba', 345, 525, ['karnataka']],
+      ['Ganga of Talakad', 350, 1000, ['karnataka']],
+      ['Kalabhra', 300, 600, ['tamil']],
+      ['Maitraka of Vallabhi', 475, 776, ['gujarat']],
+      ['Maukhari', 550, 606, ['north']],
+      ['Harsha / Pushyabhuti', 590, 647, ['north','rajputana','central']],
+      ['Gauda', 600, 626, ['bengal']],
+      ['Chalukya of Badami', 543, 753, ['deccan','karnataka']],
+      ['Eastern Chalukya', 624, 1075, ['odisha','deccan']],
+      ['Rashtrakuta', 753, 982, ['deccan','karnataka','gujarat','central']],
+      ['Pala', 750, 1174, ['bengal','north']],
+      ['Gurjara-Pratihara', 650, 1036, ['rajputana','north','gujarat','central']],
+      ['Paramara', 800, 1305, ['central','gujarat']],
+      ['Chandella', 831, 1308, ['central']],
+      ['Solanki of Gujarat', 942, 1244, ['gujarat']],
+      ['Chalukya of Kalyani', 973, 1189, ['deccan','karnataka']],
+      ['Tomar of Delhi', 736, 1151, ['north']],
+      ['Chahamana / Chauhan', 700, 1192, ['rajputana']],
+      ['Gahadavala', 1089, 1197, ['north']],
+      ['Sena', 1070, 1230, ['bengal']],
+      ['Imperial Chola', 848, 1279, ['tamil','karnataka','odisha','lanka']],
+      ['Hoysala', 1026, 1343, ['karnataka']],
+      ['Eastern Ganga', 1078, 1434, ['odisha']],
+      ['Kakatiya', 1083, 1323, ['deccan']],
+      ['Yadava', 1190, 1317, ['deccan']],
+      ['Delhi Sultanate', 1206, 1526, ['north','kabul','sindh','bengal','rajputana','central','gujarat','deccan']],
+      ['Mughal Empire', 1526, 1707, ['north','kabul','sindh','bengal','odisha','rajputana','gujarat','central','deccan']],
+      ['Sur Empire', 1540, 1556, ['north','bengal']],
+      ['Vijayanagara', 1336, 1646, ['karnataka','tamil']],
+      ['Bahmani Sultanate', 1347, 1527, ['deccan']],
+      ['Ahom Kingdom', 1228, 1826, ['bengal']],
+      ['Gajapati', 1434, 1541, ['odisha']],
+      ['Sisodia / Mewar', 1326, 1818, ['rajputana']],
+      ['Bengal Sultanate', 1352, 1576, ['bengal']],
+      ['Deccan Sultanates', 1518, 1687, ['deccan']],
+      ['Maratha Empire', 1674, 1818, ['deccan','central','gujarat','rajputana','north']]
+    ];
+
+    const fy = y => y < 0 ? Math.abs(y) + ' BCE' : y + ' CE';
+    
+    // Global State
+    let P = P100; // Default to 100-year scale
+    let currentMode = 'explore'; 
+    let currentQuizType = 'location'; 
+    let ap = 0; 
+    let quizPool = [];
+    let currentQuizIndex = 0;
+    let score = 0;
+    let waitingForNext = false;
+    let currentTimelineOptions = [];
+
+    // Initialize Nav Function
+    function buildTimelineNav() {
+      const nav = document.getElementById('pb');
+      nav.innerHTML = '';
+      P.forEach((p, i) => {
+        const b = document.createElement('button');
+        b.className = 'pbt' + (i === ap ? ' act' : '');
+        b.textContent = p.l;
+        b.onclick = () => sel(i);
+        nav.appendChild(b);
+      });
+    }
+
+    function setIntervalMode(mode) {
+      document.getElementById('btn-100yr').classList.toggle('active', mode === 100);
+      document.getElementById('btn-200yr').classList.toggle('active', mode === 200);
+      P = mode === 100 ? P100 : P200;
+      ap = 0; // Reset to beginning of new scale
+      buildTimelineNav();
+      sel(ap);
+    }
+
+    function step(d) { sel((ap + d + P.length) % P.length); }
+
+    function sel(i) {
+      if(currentMode !== 'explore') return;
+      ap = i;
+      document.querySelectorAll('.pbt').forEach((b, j) => b.classList.toggle('act', j === i));
+      document.getElementById('pt').textContent = P[i].l;
+      renderExplore();
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('btn-explore').classList.toggle('active', mode === 'explore');
+      document.getElementById('btn-quiz').classList.toggle('active', mode === 'quiz');
+      document.getElementById('quiz-type-toggle').style.display = mode === 'quiz' ? 'flex' : 'none';
+      document.getElementById('explore-interval-toggle').style.display = mode === 'explore' ? 'flex' : 'none';
+      
+      const svg = document.getElementById('mapsvg');
+      
+      if(mode === 'explore') {
+        document.getElementById('explore-ui').style.display = 'block';
+        document.getElementById('quiz-ui').style.display = 'none';
+        document.getElementById('inf').style.display = 'flex';
+        svg.setAttribute('class', 'explore-mode');
+        renderExplore();
+      } else {
+        document.getElementById('explore-ui').style.display = 'none';
+        document.getElementById('quiz-ui').style.display = 'block';
+        document.getElementById('inf').style.display = 'none';
+        setQuizType(currentQuizType); 
+      }
+    }
+
+    function setQuizType(type) {
+      currentQuizType = type;
+      document.getElementById('btn-loc-quiz').classList.toggle('active', type === 'location');
+      document.getElementById('btn-time-quiz').classList.toggle('active', type === 'timeline');
+      
+      const svg = document.getElementById('mapsvg');
+      svg.setAttribute('class', type === 'location' ? 'loc-quiz-mode' : 'time-quiz-mode');
+      
+      document.getElementById('mc-grid').style.display = type === 'timeline' ? 'grid' : 'none';
+      
+      startQuiz();
+    }
+
+    function getPatternDef(colors) {
+      if (colors.length === 1) return colors[0];
+      const ns = 'http://www.w3.org/2000/svg';
+      const id = 'pat-' + colors.map(c => c.replace('#','')).join('-');
+      if (document.getElementById(id)) return `url(#${id})`;
+      const pat = document.createElementNS(ns, 'pattern');
+      pat.setAttribute('id', id); pat.setAttribute('patternUnits', 'userSpaceOnUse');
+      
+      if (colors.length === 2) {
+        pat.setAttribute('width', '24'); pat.setAttribute('height', '24');
+        const bg = document.createElementNS(ns, 'rect'); bg.setAttribute('width', '24'); bg.setAttribute('height', '24'); bg.setAttribute('fill', colors[0]); pat.appendChild(bg);
+        const r1 = document.createElementNS(ns, 'rect'); r1.setAttribute('width', '12'); r1.setAttribute('height', '12'); r1.setAttribute('fill', colors[1]); pat.appendChild(r1);
+        const r2 = document.createElementNS(ns, 'rect'); r2.setAttribute('x', '12'); r2.setAttribute('y', '12'); r2.setAttribute('width', '12'); r2.setAttribute('height', '12'); r2.setAttribute('fill', colors[1]); pat.appendChild(r2);
+      } else {
+        const w = colors.length * 8;
+        pat.setAttribute('width', w); pat.setAttribute('height', w); pat.setAttribute('patternTransform', 'rotate(45)');
+        colors.forEach((c, i) => {
+          const rect = document.createElementNS(ns, 'rect');
+          rect.setAttribute('x', i * 8); rect.setAttribute('width', '8'); rect.setAttribute('height', w); rect.setAttribute('fill', c); pat.appendChild(rect);
+        });
+      }
+      document.getElementById('dynamic-patterns').appendChild(pat);
+      return `url(#${id})`;
+    }
+
+    function renderExplore() {
+      const p = P[ap];
+      const ns = 'http://www.w3.org/2000/svg';
+      const vis = D.filter(d => d[1] < p.e && d[2] > p.s);
+      
+      document.getElementById('pc').textContent = vis.length + ' kingdoms mapped in this period';
+      
+      const RL = document.getElementById('regions-layer');
+      const LL = document.getElementById('labels-layer');
+      RL.innerHTML = ''; LL.innerHTML = ''; 
+
+      const RegionOccupants = {};
+      vis.forEach(d => {
+        const color = Palette[D.indexOf(d) % Palette.length];
+        d[3].forEach(r => {
+            if(!RegionOccupants[r]) RegionOccupants[r] = [];
+            RegionOccupants[r].push({ nm: d[0], st: d[1], en: d[2], color: color });
+        });
+      });
+
+      Object.keys(RegPaths).forEach(r => {
+          const occupants = RegionOccupants[r];
+          if (!occupants || occupants.length === 0) return;
+          const fillStyle = getPatternDef([...new Set(occupants.map(o => o.color))]);
+
+          const gReg = document.createElementNS(ns, 'g');
+          gReg.setAttribute('class', 'region-group');
+          const path = document.createElementNS(ns, 'path');
+          path.setAttribute('d', RegPaths[r]); path.setAttribute('fill', fillStyle); 
+          path.setAttribute('opacity', '0.4');
+          gReg.appendChild(path);
+
+          gReg.onclick = () => {
+              let html = `<div class="inf-title">Region: ${r}</div>`;
+              occupants.forEach(occ => {
+                  html += `<div style="border-left: 4px solid ${occ.color}; padding-left: 8px; min-width: 140px;">
+                      <div style="font-weight:bold; color:${occ.color}">${occ.nm}</div>
+                      <div style="font-size:11px; color:#374151">${fy(occ.st)} - ${fy(occ.en)}</div>
+                  </div>`;
+              });
+              document.getElementById('inf').innerHTML = html;
+          };
+          RL.appendChild(gReg);
+      });
+
+      let labelCounts = {};
+      vis.forEach(d => {
+        const color = Palette[D.indexOf(d) % Palette.length];
+        const [nm, st, en, regions] = d;
+        const primaryRegion = regions[0];
+
+        if (LabelsConfig[primaryRegion]) {
+            if (!labelCounts[primaryRegion]) labelCounts[primaryRegion] = 0;
+            let yOffset = labelCounts[primaryRegion] * 24; 
+            labelCounts[primaryRegion]++;
+            const lx = LabelsConfig[primaryRegion].x; const ly = LabelsConfig[primaryRegion].y + yOffset;
+
+            const t1 = document.createElementNS(ns, 'text');
+            t1.setAttribute('x', lx); t1.setAttribute('y', ly);
+            t1.setAttribute('class', 'dynasty-label'); t1.setAttribute('text-anchor', 'middle');
+            t1.style.fill = color; 
+            t1.textContent = nm;
+
+            const t2 = document.createElementNS(ns, 'text');
+            t2.setAttribute('x', lx); t2.setAttribute('y', ly + 10);
+            t2.setAttribute('class', 'dynasty-label dynasty-dates'); t2.setAttribute('text-anchor', 'middle');
+            t2.textContent = fy(st) + ' - ' + fy(en);
+
+            LL.appendChild(t1); LL.appendChild(t2);
+        }
+      });
+    }
+
+    /* --- QUIZ LOGIC --- */
+    function startQuiz() {
+      quizPool = [...D].sort(() => 0.5 - Math.random()).slice(0, 10);
+      currentQuizIndex = 0;
+      score = 0;
+      waitingForNext = false;
+      document.getElementById('btn-restart').style.display = 'none';
+      loadQuizQuestion();
+    }
+
+    function loadQuizQuestion() {
+      if(currentQuizIndex >= quizPool.length) {
+        endQuiz();
+        return;
+      }
+      
+      const currentDynasty = quizPool[currentQuizIndex];
+      const [nm, st, en] = currentDynasty;
+      
+      document.getElementById('quiz-hud').textContent = `Question ${currentQuizIndex + 1} of 10`;
+      document.getElementById('quiz-score').textContent = `Score: ${score}`;
+      
+      if(currentQuizType === 'location') {
+        document.getElementById('quiz-prompt').innerHTML = `Click the map to select the primary region (heartland) of the <strong>${nm}</strong> <br><span style="font-size:12px;">(Active roughly ${fy(st)} to ${fy(en)})</span>`;
+        renderLocQuizMap();
+      } else {
+        document.getElementById('quiz-prompt').innerHTML = `Select the historically active dates for the <strong>${nm}</strong>.<br><span style="font-size:12px;">(Their territories are highlighted on the map below)</span>`;
+        renderTimeQuizMap(currentDynasty);
+        generateTimeOptions(currentDynasty);
+      }
+    }
+
+    function renderLocQuizMap() {
+      const ns = 'http://www.w3.org/2000/svg';
+      const RL = document.getElementById('regions-layer');
+      const LL = document.getElementById('labels-layer');
+      RL.innerHTML = ''; LL.innerHTML = ''; 
+
+      Object.keys(RegPaths).forEach(r => {
+          const gReg = document.createElementNS(ns, 'g');
+          gReg.setAttribute('class', 'region-group');
+          gReg.setAttribute('id', 'quiz-region-' + r);
+          const path = document.createElementNS(ns, 'path');
+          path.setAttribute('d', RegPaths[r]); path.setAttribute('fill', 'transparent'); 
+          gReg.appendChild(path);
+
+          gReg.onclick = () => handleLocQuizClick(r);
+          RL.appendChild(gReg);
+      });
+    }
+
+    function handleLocQuizClick(clickedRegion) {
+      if(waitingForNext) return;
+      waitingForNext = true;
+      
+      const currentDynasty = quizPool[currentQuizIndex];
+      const correctRegion = currentDynasty[3][0]; 
+      
+      const clickedGroup = document.getElementById('quiz-region-' + clickedRegion).firstChild;
+      const correctGroup = document.getElementById('quiz-region-' + correctRegion).firstChild;
+
+      if(clickedRegion === correctRegion) {
+        score++;
+        clickedGroup.setAttribute('fill', 'var(--color-success)');
+        clickedGroup.setAttribute('opacity', '0.7');
+        document.getElementById('quiz-prompt').innerHTML = `✅ <strong>Correct!</strong> The ${currentDynasty[0]} originated in the ${correctRegion.toUpperCase()} region.`;
+      } else {
+        clickedGroup.setAttribute('fill', 'var(--color-danger)');
+        clickedGroup.setAttribute('opacity', '0.7');
+        correctGroup.setAttribute('fill', 'var(--color-success)');
+        correctGroup.setAttribute('opacity', '0.7');
+        document.getElementById('quiz-prompt').innerHTML = `❌ <strong>Incorrect!</strong> The ${currentDynasty[0]} originated in the <strong>${correctRegion.toUpperCase()}</strong> region.`;
+      }
+      
+      document.getElementById('quiz-score').textContent = `Score: ${score}`;
+      setTimeout(() => { currentQuizIndex++; waitingForNext = false; loadQuizQuestion(); }, 2500);
+    }
+
+    function renderTimeQuizMap(dynasty) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const RL = document.getElementById('regions-layer');
+      const LL = document.getElementById('labels-layer');
+      RL.innerHTML = ''; LL.innerHTML = ''; 
+
+      const regions = dynasty[3];
+      const color = Palette[D.indexOf(dynasty) % Palette.length];
+
+      regions.forEach(r => {
+          if(!RegPaths[r]) return;
+          const gReg = document.createElementNS(ns, 'g');
+          gReg.setAttribute('class', 'region-group');
+          const path = document.createElementNS(ns, 'path');
+          path.setAttribute('d', RegPaths[r]);
+          path.setAttribute('fill', color);
+          path.setAttribute('opacity', '0.4');
+          gReg.appendChild(path);
+          RL.appendChild(gReg);
+      });
+    }
+
+    function generateTimeOptions(correctDynasty) {
+      const otherDynasties = [...D].filter(d => d[0] !== correctDynasty[0]).sort(() => 0.5 - Math.random());
+      
+      currentTimelineOptions = [correctDynasty];
+      currentTimelineOptions.push(otherDynasties[0], otherDynasties[1], otherDynasties[2]);
+      currentTimelineOptions.sort(() => 0.5 - Math.random()); 
+
+      const grid = document.getElementById('mc-grid');
+      grid.innerHTML = '';
+
+      currentTimelineOptions.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'mc-btn';
+        btn.textContent = `${fy(opt[1])} to ${fy(opt[2])}`;
+        btn.onclick = () => handleTimeQuizClick(idx, opt === correctDynasty);
+        grid.appendChild(btn);
+      });
+    }
+
+    function handleTimeQuizClick(selectedIndex, isCorrect) {
+      if(waitingForNext) return;
+      waitingForNext = true;
+      
+      const buttons = document.getElementById('mc-grid').children;
+      const correctDynasty = quizPool[currentQuizIndex];
+
+      for(let i=0; i<buttons.length; i++) {
+        buttons[i].disabled = true;
+        if(currentTimelineOptions[i] === correctDynasty) {
+          buttons[i].classList.add('correct');
+        } else if (i === selectedIndex && !isCorrect) {
+          buttons[i].classList.add('wrong');
+        }
+      }
+
+      if(isCorrect) {
+        score++;
+        document.getElementById('quiz-prompt').innerHTML = `✅ <strong>Correct!</strong> The ${correctDynasty[0]} ruled during this era.`;
+      } else {
+        document.getElementById('quiz-prompt').innerHTML = `❌ <strong>Incorrect!</strong> The ${correctDynasty[0]} was active from ${fy(correctDynasty[1])} to ${fy(correctDynasty[2])}.`;
+      }
+      
+      document.getElementById('quiz-score').textContent = `Score: ${score}`;
+      setTimeout(() => { currentQuizIndex++; waitingForNext = false; loadQuizQuestion(); }, 2500);
+    }
+
+    function endQuiz() {
+      document.getElementById('quiz-hud').textContent = `Quiz Complete!`;
+      document.getElementById('quiz-prompt').innerHTML = `You scored <strong>${score} out of 10</strong>! <br> Keep practicing to build that spatial-temporal memory!`;
+      document.getElementById('btn-restart').style.display = 'inline-block';
+      document.getElementById('mc-grid').style.display = 'none';
+      document.getElementById('regions-layer').innerHTML = ''; 
+    }
+
+    // Startup
+    buildTimelineNav();
+    sel(0);
+  </script>
+</body>
+</html>
