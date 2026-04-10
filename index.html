@@ -33,7 +33,7 @@
     * { box-sizing: border-box; }
     
     /* Main Toggles */
-    .mode-toggle { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+    .mode-toggle { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
     .mode-btn { padding: 8px 16px; font-size: 14px; font-weight: bold; border: 2px solid var(--color-primary); border-radius: 8px; background: #FFFFFF; color: var(--color-primary); cursor: pointer; transition: 0.2s; }
     .mode-btn.active { background: var(--color-primary); color: #fff; }
     
@@ -65,8 +65,20 @@
     .mc-btn.correct { background: var(--color-success); color: #fff; border-color: var(--color-success); }
     .mc-btn.wrong { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
 
+    /* Timeline UI */
+    .timeline-ui { display: none; max-width: 800px; margin: 0 auto; text-align: center; }
+    .timeline-controls { margin-bottom: 20px; min-height: 35px; }
+    .timeline-controls select { padding: 8px 16px; font-size: 14px; border-radius: 8px; border: 2px solid var(--color-border); outline: none; cursor: pointer; font-weight: bold; color: var(--color-text-main); }
+    .gantt-wrapper { position: relative; width: 100%; height: 500px; overflow-x: auto; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-panel); padding: 20px 0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .gantt-track { position: relative; min-width: 1000px; height: 100%; min-height: max-content; margin: 0 30px; padding-bottom: 60px; }
+    .gantt-axis { position: absolute; bottom: 30px; width: 100%; height: 3px; background: var(--color-border); border-radius: 3px; }
+    .gantt-tick { position: absolute; bottom: 25px; height: 10px; width: 2px; background: var(--color-text-sub); }
+    .gantt-tick-label { position: absolute; bottom: 5px; transform: translateX(-50%); font-size: 12px; font-weight: bold; color: var(--color-text-sub); }
+    .gantt-bar { position: absolute; height: 32px; border-radius: 6px; color: white; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s, z-index 0s; cursor: pointer; border: 1px solid rgba(255,255,255,0.3); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+    .gantt-bar:hover { transform: scale(1.05); z-index: 100 !important; width: auto !important; min-width: max-content; padding: 0 15px; }
+
     /* Map container */
-    .map-container { max-width: 700px; margin: 0 auto; background: var(--color-panel); border-radius: 12px; border: 1px solid var(--color-border); padding: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .map-container { max-width: 700px; margin: 0 auto; background: var(--color-panel); border-radius: 12px; border: 1px solid var(--color-border); padding: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: opacity 0.3s; }
     
     .region-group { transition: 0.2s; }
     .explore-mode .region-group { cursor: pointer; }
@@ -89,6 +101,7 @@
   <div class="mode-toggle">
     <button class="mode-btn active" id="btn-explore" onclick="setMode('explore')">🗺️ Explore Mode</button>
     <button class="mode-btn" id="btn-quiz" onclick="setMode('quiz')">🎮 Quiz Mode</button>
+    <button class="mode-btn" id="btn-timeline" onclick="setMode('timeline')">📈 Timeline Mode</button>
   </div>
   
   <div class="sub-toggle" id="quiz-type-toggle">
@@ -99,6 +112,11 @@
   <div class="sub-toggle" id="explore-interval-toggle" style="display:flex;">
     <button class="sub-btn active" id="btn-100yr" onclick="setIntervalMode(100)">100-Year Scale</button>
     <button class="sub-btn" id="btn-200yr" onclick="setIntervalMode(200)">200-Year Scale</button>
+  </div>
+
+  <div class="sub-toggle" id="timeline-type-toggle">
+    <button class="sub-btn active" id="btn-tl-all" onclick="setTimelineType('all')">🌐 Complete Timeline</button>
+    <button class="sub-btn" id="btn-tl-region" onclick="setTimelineType('region')">📍 Region-wise</button>
   </div>
 
   <div class="explore-ui" id="explore-ui">
@@ -117,6 +135,14 @@
     <div class="mc-grid" id="mc-grid"></div>
     <div class="quiz-score" id="quiz-score">Score: 0</div>
     <button onclick="startQuiz()" style="margin-top:10px; padding: 5px 10px; border-radius: 5px; cursor: pointer; display:none;" id="btn-restart">Restart Quiz</button>
+  </div>
+
+  <div class="timeline-ui" id="timeline-ui">
+    <div class="timeline-controls" id="region-select-container" style="display: none;">
+        <label for="region-select" style="font-weight:bold; margin-right: 10px;">Select Region:</label>
+        <select id="region-select" onchange="renderRegionTimeline(this.value)"></select>
+    </div>
+    <div id="timeline-container"></div>
   </div>
 
   <div class="map-container" id="map-container">
@@ -145,7 +171,6 @@
   <div class="inf" id="inf"><span style="color:#374151">Select a region to learn more, or switch to Quiz Mode!</span></div>
 
   <script>
-    // Two different arrays for timeline scales
     const P100 = [
       {l:"300 – 200 BCE",s:-300,e:-200}, {l:"200 – 100 BCE",s:-200,e:-100},
       {l:"100 BCE – 1 CE",s:-100,e:1}, {l:"1 – 100 CE",s:1,e:100},
@@ -246,9 +271,10 @@
     const fy = y => y < 0 ? Math.abs(y) + ' BCE' : y + ' CE';
     
     // Global State
-    let P = P100; // Default to 100-year scale
+    let P = P100;
     let currentMode = 'explore'; 
     let currentQuizType = 'location'; 
+    let currentTimelineType = 'all'; // Default timeline view
     let ap = 0; 
     let quizPool = [];
     let currentQuizIndex = 0;
@@ -256,7 +282,6 @@
     let waitingForNext = false;
     let currentTimelineOptions = [];
 
-    // Initialize Nav Function
     function buildTimelineNav() {
       const nav = document.getElementById('pb');
       nav.innerHTML = '';
@@ -273,7 +298,7 @@
       document.getElementById('btn-100yr').classList.toggle('active', mode === 100);
       document.getElementById('btn-200yr').classList.toggle('active', mode === 200);
       P = mode === 100 ? P100 : P200;
-      ap = 0; // Reset to beginning of new scale
+      ap = 0;
       buildTimelineNav();
       sel(ap);
     }
@@ -292,23 +317,118 @@
       currentMode = mode;
       document.getElementById('btn-explore').classList.toggle('active', mode === 'explore');
       document.getElementById('btn-quiz').classList.toggle('active', mode === 'quiz');
+      document.getElementById('btn-timeline').classList.toggle('active', mode === 'timeline');
+      
+      // Control sub-menus visibility
       document.getElementById('quiz-type-toggle').style.display = mode === 'quiz' ? 'flex' : 'none';
       document.getElementById('explore-interval-toggle').style.display = mode === 'explore' ? 'flex' : 'none';
+      document.getElementById('timeline-type-toggle').style.display = mode === 'timeline' ? 'flex' : 'none';
       
       const svg = document.getElementById('mapsvg');
+      const mapContainer = document.getElementById('map-container');
       
       if(mode === 'explore') {
         document.getElementById('explore-ui').style.display = 'block';
         document.getElementById('quiz-ui').style.display = 'none';
+        document.getElementById('timeline-ui').style.display = 'none';
         document.getElementById('inf').style.display = 'flex';
+        mapContainer.style.display = 'block';
         svg.setAttribute('class', 'explore-mode');
         renderExplore();
-      } else {
+      } else if(mode === 'quiz') {
         document.getElementById('explore-ui').style.display = 'none';
         document.getElementById('quiz-ui').style.display = 'block';
+        document.getElementById('timeline-ui').style.display = 'none';
         document.getElementById('inf').style.display = 'none';
+        mapContainer.style.display = 'block';
         setQuizType(currentQuizType); 
+      } else if(mode === 'timeline') {
+        document.getElementById('explore-ui').style.display = 'none';
+        document.getElementById('quiz-ui').style.display = 'none';
+        document.getElementById('timeline-ui').style.display = 'block';
+        document.getElementById('inf').style.display = 'none';
+        mapContainer.style.display = 'none';
+        
+        // Populate dropdown if not done yet
+        const select = document.getElementById('region-select');
+        if(select.options.length === 0) {
+          Object.keys(RegPaths).forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+            select.appendChild(opt);
+          });
+        }
+        
+        // Trigger the correct timeline render
+        setTimelineType(currentTimelineType);
       }
+    }
+
+    // NEW FUNCTION: Handle the timeline sub-toggle
+    function setTimelineType(type) {
+      currentTimelineType = type;
+      document.getElementById('btn-tl-all').classList.toggle('active', type === 'all');
+      document.getElementById('btn-tl-region').classList.toggle('active', type === 'region');
+
+      if (type === 'all') {
+        document.getElementById('region-select-container').style.display = 'none';
+        renderRegionTimeline('all');
+      } else {
+        document.getElementById('region-select-container').style.display = 'block';
+        renderRegionTimeline(document.getElementById('region-select').value);
+      }
+    }
+
+    // MODIFIED FUNCTION: Accepts 'all' or a specific regionKey
+    function renderRegionTimeline(regionKey) {
+      const container = document.getElementById('timeline-container');
+      
+      let dynastiesToRender;
+      if (regionKey === 'all') {
+        // Render ALL dynasties
+        dynastiesToRender = [...D].sort((a,b) => a[1] - b[1]);
+      } else {
+        // Filter by region
+        dynastiesToRender = D.filter(d => d[3].includes(regionKey)).sort((a,b) => a[1] - b[1]);
+      }
+
+      // Set global timeline bounds based on our data
+      const minYear = -400; 
+      const maxYear = 1900; 
+      const span = maxYear - minYear;
+
+      let html = `<div class="gantt-wrapper"><div class="gantt-track">`;
+
+      html += `<div class="gantt-axis"></div>`;
+      for(let y = minYear; y <= maxYear; y += 200) {
+        const left = ((y - minYear) / span) * 100;
+        html += `<div class="gantt-tick" style="left: ${left}%"></div>`;
+        html += `<div class="gantt-tick-label" style="left: ${left}%">${fy(y)}</div>`;
+      }
+
+      // Track occupied "rows" (y-axis offsets) to prevent overlapping bars
+      let rows = []; 
+      
+      dynastiesToRender.forEach(d => {
+        const [nm, st, en] = d;
+        const leftPos = ((st - minYear) / span) * 100;
+        const widthPct = Math.max(((en - st) / span) * 100, 2);
+        const color = Palette[D.indexOf(d) % Palette.length];
+
+        let rowIndex = 0;
+        while (rows[rowIndex] !== undefined && rows[rowIndex] > st) {
+          rowIndex++;
+        }
+        rows[rowIndex] = en;
+
+        const topPos = 20 + (rowIndex * 40);
+
+        html += `<div class="gantt-bar" style="left: ${leftPos}%; width: ${widthPct}%; top: ${topPos}px; background-color: ${color};" title="${nm} (${fy(st)} - ${fy(en)})">${nm}</div>`;
+      });
+
+      html += `</div></div>`;
+      container.innerHTML = html;
     }
 
     function setQuizType(type) {
